@@ -1,0 +1,24 @@
+{
+  "name": "anonim-savol-bot",
+  "version": "1.0.0",
+  "description": "Anonim savol-javob Telegram bot",
+  "main": "src/main.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/main.js",
+    "dev": "node --watch src/main.js"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.1",
+    "node-telegram-bot-api": "^0.66.0"
+  },
+  "keywords": [
+    "telegram",
+    "bot",
+    "anonim",
+    "savol",
+    "javob"
+  ],
+  "author": "Suhrob",
+  "license": "MIT"
+}
