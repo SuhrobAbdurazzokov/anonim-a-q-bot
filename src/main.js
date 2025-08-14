@@ -1,6 +1,3 @@
-// Anonim Savol-Javob Telegram Bot
-// Bu bot foydalanuvchilarning anonim savollarini qabul qilib, admin orqali javob beradi
-
 import TelegramBot from "node-telegram-bot-api";
 import config from "./config.js";
 // Bot tokeni - BotFather'dan olinadi
@@ -21,15 +18,14 @@ const bot = new TelegramBot(token, {
 const ADMIN_ID = config.ADMIN_ID;
 
 // Xotira - ma'lumotlarni vaqtincha saqlash uchun
-let questions = {}; // {questionId: {userId: number, question: string, answered: boolean}}
+let questions = {};
 let questionCounter = 1;
 
-// Bot ishga tushganda
 bot.on("polling_error", (error) => {
     console.error("❌ Polling xatosi:", error.code);
 
     if (error.code === "EFATAL") {
-        console.error("🔑 Token noto'g'ri yoki bot o'chirilgan!");
+        console.error("🔑 Token noto'g'ri bo'lishi mumkin.");
     } else if (error.code === "ENOTFOUND" || error.code === "ECONNREFUSED") {
         console.error("🌐 Internet aloqasi muammosi. Internetni tekshiring.");
     } else if (
@@ -42,7 +38,7 @@ bot.on("polling_error", (error) => {
     }
 });
 
-// /start buyrug'i - botni ishga tushirganda
+// /start'ni bosganda chiqadigan xabar:
 bot.onText(/\/start/, (msg) => {
     const chatId = msg.chat.id;
     console.log(
@@ -55,18 +51,13 @@ bot.onText(/\/start/, (msg) => {
     const welcomeText = `
 🤖 *Anonim Savol-Javob Bot*
 
-Assalomu alaykum! Bu bot orqali siz anonim ravishda savol bera olasiz.
+Assalomu alaykum! Bu bot orqali siz anonim ravishda Suhrobga savol bera olasiz, sizning savolingiz to'liqligicha anonim saqlanadi.
 
 📝 *Qanday ishlaydi:*
 • Shunchaki savolingizni yozing
 • Sizning ismingiz sir saqlanadi
-• Admin javobni bu yerda beradi
 
-💡 *Misollar:*
-• "JavaScript qanday o'rganish kerak?"
-• "Dasturlashda qayerdan boshlash kerak?"
-
-Savolingizni yozing! 👇
+Savolingizni yozing va Suhrob tez orada javob beradi...👇
     `;
 
     bot.sendMessage(chatId, welcomeText, { parse_mode: "Markdown" }).catch(
@@ -220,11 +211,11 @@ bot.onText(/\/answer (\d+) (.+)/, (msg, match) => {
     const responseText = `
 💬 *Savolingizga javob keldi:*
 
-❓ *Savol:* ${question.question}
+❓ *Siz yozgan savol:* ${question.question}
 
-✅ *Javob:* ${answer}
+✅ *Savolingizga berilgan javob:* ${answer}
 
-📌 Yana savol bo'lsa, bemalol yozing!
+📌 Yana savolingiz bo'lsa, bemalol yozavering!
     `;
 
     bot.sendMessage(question.userId, responseText, { parse_mode: "Markdown" })
@@ -272,7 +263,7 @@ bot.on("message", (msg) => {
     if (!messageText) {
         bot.sendMessage(
             chatId,
-            "📝 Iltimos, savolingizni matn ko'rinishida yozing."
+            "📝 Iltimos, savolingizni matn (text) ko'rinishida yozing."
         ).catch((err) =>
             console.error("❌ Xabar yuborishda xato:", err.message)
         );
@@ -280,7 +271,7 @@ bot.on("message", (msg) => {
     }
 
     // Juda qisqa matnlarni rad etish
-    if (messageText.length < 5) {
+    if (messageText.length < 1) {
         bot.sendMessage(chatId, "❌ Savol juda qisqa. Batafsil yozing.").catch(
             (err) => console.error("❌ Xabar yuborishda xato:", err.message)
         );
@@ -303,11 +294,11 @@ bot.on("message", (msg) => {
     bot.sendMessage(
         chatId,
         `
-✅ *Savolingiz qabul qilindi!*
+✅ *Savolingiz qabul qilindi.*
 
-📝 *Savolingiz:* ${messageText}
+📝 *Sizning savolingiz:* ${messageText}
 
-⏳ Admin tez orada javob beradi. Kuting...
+⏳*Suhrob tez orada javob beradi...*
     `,
         { parse_mode: "Markdown" }
     ).catch((err) => console.error("❌ Tasdiq xabarida xato:", err.message));
@@ -349,15 +340,12 @@ process.on("SIGINT", () => {
 bot.getMe()
     .then((botInfo) => {
         console.log("✅ Bot muvaffaqiyatli ishga tushdi!");
-        console.log(`🤖 Bot nomi: @${botInfo.username}`);
-        console.log(`👨‍💻 Admin ID: ${ADMIN_ID}`);
-        console.log("📡 Xabarlar kutilmoqda...");
     })
     .catch((error) => {
         console.error("❌ Bot ma'lumotlarini olishda xato:", error.message);
         if (error.message.includes("401")) {
             console.error(
-                "🔑 Token noto'g'ri! BotFather dan yangi token oling."
+                "🔑 Token noto'g'ri."
             );
         }
     });
