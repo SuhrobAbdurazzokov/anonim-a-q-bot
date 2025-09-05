@@ -1,136 +1,168 @@
-// bot.js
-import { Telegraf } from "telegraf";
+import TelegramBot from "node-telegram-bot-api";
 import config from "./config.js";
 
-const bot = new Telegraf(config.TOKEN);
-const ADMIN_ID = config.ADMIN_ID;
+const token = config.TOKEN;
+const bot = new TelegramBot(token, {
+    polling: {
+        interval: 300,
+        autoStart: true,
+        params: { timeout: 10 },
+    },
+});
 
-// Savollarni vaqtincha saqlash
+const ADMIN_ID = config.ADMIN_ID;
 let questions = {};
 let questionCounter = 1;
 
-// Start
-bot.start((ctx) => {
-    const welcomeText = `
-🤖 *Anonim Savol-Javob Bot*
-
-Assalomu alaykum! Bu bot orqali siz anonim ravishda Suhrobga (@suhrobswe) savol bera olasiz.
-Siz matn, rasm, ovoz, video yoki sticker yuborishingiz mumkin — sizning kimligingiz to'liqligicha anonim qoladi ✅
-  `;
-    ctx.reply(welcomeText, { parse_mode: "Markdown" });
+// --- Polling xatolarni ushlash ---
+bot.on("polling_error", (error) => {
+    console.error("❌ Polling xatosi:", error.code);
+    if (
+        error.code === "ETELEGRAM" &&
+        error.response?.body?.error_code === 409
+    ) {
+        console.error(
+            "🔄 Bot boshqa joyda ishlamoqda. Faqat bitta joyda ishlating."
+        );
+    }
 });
 
-// Savollarni qabul qilish (matn, media)
-bot.on(["text", "photo", "video", "audio", "voice", "sticker"], async (ctx) => {
-    const chatId = ctx.chat.id;
+// --- Foydalanuvchi start ---
+bot.onText(/\/start/, (msg) => {
+    const chatId = msg.chat.id;
+    bot.sendMessage(
+        chatId,
+        `
+🤖 *Anonim Savol-Javob Bot*
 
-    // Admin xabarlarini tashlab yuboramiz
-    if (chatId.toString() === ADMIN_ID) return;
+Siz matn, rasm, audio yoki video ko‘rinishida savol bera olasiz.
+Ismingiz va ma’lumotlaringiz *anonim saqlanadi*.  
 
-    let questionContent = "";
+📝 Savolingizni yuboring, Suhrob tez orada javob beradi.
+        `,
+        { parse_mode: "Markdown" }
+    );
+});
 
-    if (ctx.message.text) questionContent = `📝 Matn: ${ctx.message.text}`;
-    else if (ctx.message.photo) questionContent = "🖼 Rasm yuborildi";
-    else if (ctx.message.video) questionContent = "🎥 Video yuborildi";
-    else if (ctx.message.audio) questionContent = "🎵 Audio yuborildi";
-    else if (ctx.message.voice) questionContent = "🎤 Ovozli xabar yuborildi";
-    else if (ctx.message.sticker) questionContent = "😊 Sticker yuborildi";
-
-    // Savolni saqlash
+// --- Savolni qabul qilish umumiy funksiya ---
+function handleQuestion(chatId, type, content, fileId = null) {
     questions[questionCounter] = {
         userId: chatId,
-        message: ctx.message,
+        type,
+        content,
+        fileId,
         answered: false,
         timestamp: new Date(),
     };
 
+    console.log(`📝 Yangi ${type} savol #${questionCounter}`);
+
     // Foydalanuvchiga tasdiq
-    await ctx.reply(
-        `✅ Savolingiz qabul qilindi. Suhrob tez orada savolingizga javob beradi.\n\nID: #${questionCounter}\n${questionContent}`
+    bot.sendMessage(
+        chatId,
+        `✅ Savolingiz qabul qilindi. Suhrob tez orada javob beradi.`,
+        { parse_mode: "Markdown" }
     );
 
     // Adminga yuborish
-    const notifyText = `🔔 Yangi savol keldi!\n\n#${questionCounter}\n${questionContent}\n\nJavob berish: /answer ${questionCounter} [javobingiz]`;
-    await bot.telegram.sendMessage(ADMIN_ID, notifyText);
+    if (ADMIN_ID) {
+        let notify = `🔔 *Yangi ${type} savol keldi!*\n\n`;
+        if (type === "text") {
+            notify += `📝 Savol: ${content}`;
+        } else {
+            notify += `📎 Fayl turi: ${type}`;
+        }
+        notify += `\n\nJavob berish uchun: \`/answer ${questionCounter} [javob]\``;
 
-    // Agar fayl bo‘lsa — adminga ham forward qilamiz
-    if (ctx.message.photo) {
-        await bot.telegram.sendPhoto(ADMIN_ID, ctx.message.photo[0].file_id);
-    } else if (ctx.message.video) {
-        await bot.telegram.sendVideo(ADMIN_ID, ctx.message.video.file_id);
-    } else if (ctx.message.audio) {
-        await bot.telegram.sendAudio(ADMIN_ID, ctx.message.audio.file_id);
-    } else if (ctx.message.voice) {
-        await bot.telegram.sendVoice(ADMIN_ID, ctx.message.voice.file_id);
-    } else if (ctx.message.sticker) {
-        await bot.telegram.sendSticker(ADMIN_ID, ctx.message.sticker.file_id);
+        bot.sendMessage(ADMIN_ID, notify, { parse_mode: "Markdown" });
+
+        // Agar media bo‘lsa, admin uchun forward qilib yuborish
+        if (type === "photo")
+            bot.sendPhoto(ADMIN_ID, fileId, { caption: "📷 Yangi rasm savol" });
+        if (type === "video")
+            bot.sendVideo(ADMIN_ID, fileId, {
+                caption: "🎥 Yangi video savol",
+            });
+        if (type === "voice")
+            bot.sendVoice(ADMIN_ID, fileId, {
+                caption: "🎤 Yangi audio savol",
+            });
+        if (type === "document")
+            bot.sendDocument(ADMIN_ID, fileId, {
+                caption: "📄 Yangi fayl savol",
+            });
     }
 
     questionCounter++;
+}
+
+// --- Text savollar ---
+bot.on("message", (msg) => {
+    const chatId = msg.chat.id;
+    if (
+        msg.text &&
+        !msg.text.startsWith("/") &&
+        chatId.toString() !== ADMIN_ID
+    ) {
+        handleQuestion(chatId, "text", msg.text);
+    }
 });
 
-// Admin buyruqlari — savollar ro‘yxati
-bot.command("questions", (ctx) => {
-    if (ctx.chat.id.toString() !== ADMIN_ID)
-        return ctx.reply("❌ Siz admin emassiz");
-
-    if (Object.keys(questions).length === 0) {
-        return ctx.reply("📭 Hozircha savollar yo‘q.");
+// --- Rasm savollar ---
+bot.on("photo", (msg) => {
+    const chatId = msg.chat.id;
+    if (chatId.toString() !== ADMIN_ID) {
+        const fileId = msg.photo[msg.photo.length - 1].file_id; // eng sifatli rasmni olish
+        handleQuestion(chatId, "photo", null, fileId);
     }
-
-    let list = "📋 Savollar ro‘yxati:\n\n";
-    for (let id in questions) {
-        const q = questions[id];
-        list += `${q.answered ? "✅" : "❌"} #${id} — ${
-            q.message.text || "[media]"
-        }\n`;
-    }
-    ctx.reply(list);
 });
 
-// Admin javob berishi
-bot.command("answer", async (ctx) => {
-    if (ctx.chat.id.toString() !== ADMIN_ID)
-        return ctx.reply("❌ Siz admin emassiz");
-
-    const parts = ctx.message.text.trim().split(" ");
-    const questionId = parts[1];
-    const answer = parts.slice(2).join(" ");
-
-    if (!questionId || !answer) {
-        return ctx.reply("❌ To‘g‘ri format: /answer [ID] [javob]");
+// --- Video savollar ---
+bot.on("video", (msg) => {
+    const chatId = msg.chat.id;
+    if (chatId.toString() !== ADMIN_ID) {
+        handleQuestion(chatId, "video", null, msg.video.file_id);
     }
+});
+
+// --- Audio (voice) savollar ---
+bot.on("voice", (msg) => {
+    const chatId = msg.chat.id;
+    if (chatId.toString() !== ADMIN_ID) {
+        handleQuestion(chatId, "voice", null, msg.voice.file_id);
+    }
+});
+
+// --- Document (PDF, Word va h.k.) ---
+bot.on("document", (msg) => {
+    const chatId = msg.chat.id;
+    if (chatId.toString() !== ADMIN_ID) {
+        handleQuestion(chatId, "document", null, msg.document.file_id);
+    }
+});
+
+// --- Savolga javob berish ---
+bot.onText(/\/answer (\d+) (.+)/, (msg, match) => {
+    const chatId = msg.chat.id;
+    if (chatId.toString() !== ADMIN_ID) return;
+
+    const questionId = match[1];
+    const answer = match[2];
 
     if (!questions[questionId]) {
-        return ctx.reply("❌ Bu ID bo‘yicha savol topilmadi");
+        return bot.sendMessage(chatId, "❌ Bunday savol yo‘q!");
     }
 
     const q = questions[questionId];
-
-    // Javobni foydalanuvchiga yuborish
-    await bot.telegram.sendMessage(
+    bot.sendMessage(
         q.userId,
-        `💬 Savolingizga javob keldi:\n\n❓ ${
-            q.message.text || "[media]"
-        }\n\n✅ Javob: ${answer}`
+        `💬 *Savolingizga javob keldi:*\n\n✅ ${answer}`,
+        { parse_mode: "Markdown" }
     );
 
     questions[questionId].answered = true;
-
-    // ✅ Admin uchun ham xabar
-    await ctx.reply(`✅ #${questionId} savolga javob yuborildi:\n\n${answer}`);
+    bot.sendMessage(chatId, `✅ #${questionId} ga javob berildi!`);
 });
 
-// Xatoliklarni tutish
-bot.catch((err) => {
-    console.error("❌ Bot xatosi:", err);
-});
-
-// Botni ishga tushirish
-bot.launch().then(() => {
-    console.log("✅ Bot starting...");
-});
-
-// Graceful shutdown
-process.once("SIGINT", () => bot.stop("SIGINT"));
-process.once("SIGTERM", () => bot.stop("SIGTERM"));
+// --- Bot ishga tushganda ---
+bot.getMe().then(() => console.log("✅ Bot starting..."));
