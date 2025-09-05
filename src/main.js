@@ -10,7 +10,7 @@ const bot = new TelegramBot(token, {
     },
 });
 
-const ADMIN_ID = config.ADMIN_ID;
+const ADMIN_ID = String(config.ADMIN_ID); // string qilib oldik
 let questions = {};
 let questionCounter = 1;
 
@@ -27,7 +27,7 @@ bot.on("polling_error", (error) => {
     }
 });
 
-// --- Foydalanuvchi start ---
+// --- /start komandasi ---
 bot.onText(/\/start/, (msg) => {
     const chatId = msg.chat.id;
     bot.sendMessage(
@@ -46,7 +46,9 @@ Ismingiz va ma’lumotlaringiz *anonim saqlanadi*.
 
 // --- Savolni qabul qilish umumiy funksiya ---
 function handleQuestion(chatId, type, content, fileId = null) {
-    questions[questionCounter] = {
+    const qId = questionCounter++;
+
+    questions[qId] = {
         userId: chatId,
         type,
         content,
@@ -55,96 +57,81 @@ function handleQuestion(chatId, type, content, fileId = null) {
         timestamp: new Date(),
     };
 
-    console.log(`📝 Yangi ${type} savol #${questionCounter}`);
+    console.log(`📝 Yangi ${type} savol #${qId}`);
 
     // Foydalanuvchiga tasdiq
     bot.sendMessage(
         chatId,
-        `✅ Savolingiz qabul qilindi. Suhrob tez orada javob beradi.`,
-        { parse_mode: "Markdown" }
+        `✅ Savolingiz qabul qilindi. Suhrob tez orada javob beradi.`
     );
 
     // Adminga yuborish
     if (ADMIN_ID) {
         let notify = `🔔 *Yangi ${type} savol keldi!*\n\n`;
-        if (type === "text") {
-            notify += `📝 Savol: ${content}`;
-        } else {
-            notify += `📎 Fayl turi: ${type}`;
-        }
-        notify += `\n\nJavob berish uchun: \`/answer ${questionCounter} [javob]\``;
+        notify +=
+            type === "text" ? `📝 Savol: ${content}` : `📎 Fayl turi: ${type}`;
+        notify += `\n\nJavob berish uchun: /answer ${qId} [javob]`;
 
         bot.sendMessage(ADMIN_ID, notify, { parse_mode: "Markdown" });
 
-        // Agar media bo‘lsa, admin uchun forward qilib yuborish
+        // Media fayllar admin uchun
         if (type === "photo")
-            bot.sendPhoto(ADMIN_ID, fileId, { caption: "📷 Yangi rasm savol" });
+            bot.sendPhoto(ADMIN_ID, fileId, { caption: `📷 Rasm (#${qId})` });
         if (type === "video")
-            bot.sendVideo(ADMIN_ID, fileId, {
-                caption: "🎥 Yangi video savol",
-            });
+            bot.sendVideo(ADMIN_ID, fileId, { caption: `🎥 Video (#${qId})` });
         if (type === "voice")
-            bot.sendVoice(ADMIN_ID, fileId, {
-                caption: "🎤 Yangi audio savol",
-            });
+            bot.sendVoice(ADMIN_ID, fileId, { caption: `🎤 Ovoz (#${qId})` });
         if (type === "document")
             bot.sendDocument(ADMIN_ID, fileId, {
-                caption: "📄 Yangi fayl savol",
+                caption: `📄 Fayl (#${qId})`,
             });
     }
-
-    questionCounter++;
 }
 
 // --- Text savollar ---
 bot.on("message", (msg) => {
-    const chatId = msg.chat.id;
-    if (
-        msg.text &&
-        !msg.text.startsWith("/") &&
-        chatId.toString() !== ADMIN_ID
-    ) {
+    const chatId = String(msg.chat.id);
+    if (chatId === ADMIN_ID) return; // Adminning oddiy xabarlari saqlanmaydi
+
+    if (msg.text && !msg.text.startsWith("/")) {
         handleQuestion(chatId, "text", msg.text);
     }
 });
 
-// --- Rasm savollar ---
+// --- Media savollar ---
 bot.on("photo", (msg) => {
-    const chatId = msg.chat.id;
-    if (chatId.toString() !== ADMIN_ID) {
-        const fileId = msg.photo[msg.photo.length - 1].file_id; // eng sifatli rasmni olish
+    const chatId = String(msg.chat.id);
+    if (chatId !== ADMIN_ID) {
+        const fileId = msg.photo[msg.photo.length - 1].file_id;
         handleQuestion(chatId, "photo", null, fileId);
     }
 });
 
-// --- Video savollar ---
 bot.on("video", (msg) => {
-    const chatId = msg.chat.id;
-    if (chatId.toString() !== ADMIN_ID) {
+    const chatId = String(msg.chat.id);
+    if (chatId !== ADMIN_ID) {
         handleQuestion(chatId, "video", null, msg.video.file_id);
     }
 });
 
-// --- Audio (voice) savollar ---
 bot.on("voice", (msg) => {
-    const chatId = msg.chat.id;
-    if (chatId.toString() !== ADMIN_ID) {
+    const chatId = String(msg.chat.id);
+    if (chatId !== ADMIN_ID) {
         handleQuestion(chatId, "voice", null, msg.voice.file_id);
     }
 });
 
-// --- Document (PDF, Word va h.k.) ---
 bot.on("document", (msg) => {
-    const chatId = msg.chat.id;
-    if (chatId.toString() !== ADMIN_ID) {
+    const chatId = String(msg.chat.id);
+    if (chatId !== ADMIN_ID) {
         handleQuestion(chatId, "document", null, msg.document.file_id);
     }
 });
 
-// --- Savolga javob berish ---
+// --- Savolga javob berish (faqat admin) ---
 bot.onText(/\/answer (\d+) (.+)/, (msg, match) => {
-    const chatId = msg.chat.id;
-    if (chatId.toString() !== ADMIN_ID) return;
+    const chatId = String(msg.chat.id);
+    if (chatId !== ADMIN_ID) return;
 
     const questionId = match[1];
     const answer = match[2];
@@ -154,15 +141,22 @@ bot.onText(/\/answer (\d+) (.+)/, (msg, match) => {
     }
 
     const q = questions[questionId];
+    const questionText = q.content || "[media]";
+
+    // Foydalanuvchiga yuborish
     bot.sendMessage(
         q.userId,
-        `💬 *Savolingizga javob keldi:*\n\n✅ ${answer}`,
+        `💬 *Savolingizga javob keldi:*\n\n❓ Savol: ${questionText}\n\n✅ Javob: ${answer}`,
         { parse_mode: "Markdown" }
     );
 
+    // Admin tasdiq
     questions[questionId].answered = true;
-    bot.sendMessage(chatId, `✅ #${questionId} ga javob berildi!`);
+    bot.sendMessage(
+        chatId,
+        `✅ #${questionId} ga javob foydalanuvchiga yuborildi!`
+    );
 });
 
 // --- Bot ishga tushganda ---
-bot.getMe().then(() => console.log("✅ Bot starting..."));
+bot.getMe().then((me) => console.log(`✅ Bot @${me.username} ishga tushdi...`));
