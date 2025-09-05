@@ -3,8 +3,6 @@ import { Telegraf } from "telegraf";
 import config from "./config.js";
 
 const bot = new Telegraf(config.TOKEN);
-
-// Admin ID
 const ADMIN_ID = config.ADMIN_ID;
 
 // Savollarni vaqtincha saqlash
@@ -22,28 +20,21 @@ Siz matn, rasm, ovoz, video yoki sticker yuborishingiz mumkin — hammasi anonim
     ctx.reply(welcomeText, { parse_mode: "Markdown" });
 });
 
-// Oddiy savolni qabul qilish (text, photo, video, audio, voice, sticker)
+// Savollarni qabul qilish (matn, media)
 bot.on(["text", "photo", "video", "audio", "voice", "sticker"], async (ctx) => {
     const chatId = ctx.chat.id;
 
-    // Admin xabarini o'tkazib yuborish
+    // Admin xabarlarini tashlab yuboramiz
     if (chatId.toString() === ADMIN_ID) return;
 
     let questionContent = "";
 
-    if (ctx.message.text) {
-        questionContent = `📝 Matn: ${ctx.message.text}`;
-    } else if (ctx.message.photo) {
-        questionContent = "🖼 Rasm yuborildi";
-    } else if (ctx.message.video) {
-        questionContent = "🎥 Video yuborildi";
-    } else if (ctx.message.audio) {
-        questionContent = "🎵 Audio yuborildi";
-    } else if (ctx.message.voice) {
-        questionContent = "🎤 Ovozli xabar yuborildi";
-    } else if (ctx.message.sticker) {
-        questionContent = "😊 Sticker yuborildi";
-    }
+    if (ctx.message.text) questionContent = `📝 Matn: ${ctx.message.text}`;
+    else if (ctx.message.photo) questionContent = "🖼 Rasm yuborildi";
+    else if (ctx.message.video) questionContent = "🎥 Video yuborildi";
+    else if (ctx.message.audio) questionContent = "🎵 Audio yuborildi";
+    else if (ctx.message.voice) questionContent = "🎤 Ovozli xabar yuborildi";
+    else if (ctx.message.sticker) questionContent = "😊 Sticker yuborildi";
 
     // Savolni saqlash
     questions[questionCounter] = {
@@ -53,19 +44,16 @@ bot.on(["text", "photo", "video", "audio", "voice", "sticker"], async (ctx) => {
         timestamp: new Date(),
     };
 
-    // Foydalanuvchiga javob
+    // Foydalanuvchiga tasdiq
     await ctx.reply(
         `✅ Savolingiz qabul qilindi.\n\nID: #${questionCounter}\n${questionContent}`
     );
 
     // Adminga yuborish
-    let notifyText = `🔔 Yangi savol keldi!\n\n#${questionCounter}\n${questionContent}\n\nJavob berish: /answer ${questionCounter} [javobingiz]`;
+    const notifyText = `🔔 Yangi savol keldi!\n\n#${questionCounter}\n${questionContent}\n\nJavob berish: /answer ${questionCounter} [javobingiz]`;
+    await bot.telegram.sendMessage(ADMIN_ID, notifyText);
 
-    await bot.telegram.sendMessage(ADMIN_ID, notifyText, {
-        parse_mode: "Markdown",
-    });
-
-    // Faylni ham adminga yuborish
+    // Agar fayl bo‘lsa — adminga ham forward qilamiz
     if (ctx.message.photo) {
         await bot.telegram.sendPhoto(ADMIN_ID, ctx.message.photo[0].file_id);
     } else if (ctx.message.video) {
@@ -81,7 +69,7 @@ bot.on(["text", "photo", "video", "audio", "voice", "sticker"], async (ctx) => {
     questionCounter++;
 });
 
-// Admin buyruqlari
+// Admin buyruqlari — savollar ro‘yxati
 bot.command("questions", (ctx) => {
     if (ctx.chat.id.toString() !== ADMIN_ID)
         return ctx.reply("❌ Siz admin emassiz");
@@ -100,13 +88,18 @@ bot.command("questions", (ctx) => {
     ctx.reply(list);
 });
 
-// Javob berish
-bot.hears(/\/answer (\d+) (.+)/, async (ctx) => {
+// Admin javob berishi
+bot.command("answer", async (ctx) => {
     if (ctx.chat.id.toString() !== ADMIN_ID)
         return ctx.reply("❌ Siz admin emassiz");
 
-    const questionId = ctx.match[1];
-    const answer = ctx.match[2];
+    const parts = ctx.message.text.split(" ");
+    const questionId = parts[1];
+    const answer = parts.slice(2).join(" ");
+
+    if (!questionId || !answer) {
+        return ctx.reply("❌ To‘g‘ri format: /answer [ID] [javob]");
+    }
 
     if (!questions[questionId]) {
         return ctx.reply("❌ Bu ID bo‘yicha savol topilmadi");
@@ -114,6 +107,7 @@ bot.hears(/\/answer (\d+) (.+)/, async (ctx) => {
 
     const q = questions[questionId];
 
+    // Javobni foydalanuvchiga yuborish
     await bot.telegram.sendMessage(
         q.userId,
         `💬 Savolingizga javob keldi:\n\n❓ ${
@@ -123,15 +117,15 @@ bot.hears(/\/answer (\d+) (.+)/, async (ctx) => {
 
     questions[questionId].answered = true;
 
-    ctx.reply(`✅ #${questionId} savolga javob berildi.`);
+    ctx.reply(`✅ #${questionId} savolga javob yuborildi.`);
 });
 
-// Error handler
+// Xatoliklarni tutish
 bot.catch((err) => {
     console.error("❌ Bot xatosi:", err);
 });
 
-// Botni ishga tushurish
+// Botni ishga tushirish
 bot.launch().then(() => {
     console.log("✅ Bot starting...");
 });
