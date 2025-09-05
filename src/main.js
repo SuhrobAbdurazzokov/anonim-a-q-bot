@@ -14,8 +14,8 @@ bot.start((ctx) => {
     const welcomeText = `
 🤖 *Anonim Savol-Javob Bot*
 
-Assalomu alaykum! Bu bot orqali siz anonim ravishda Suhrobga savol bera olasiz.
-Siz matn, rasm, ovoz, video yoki sticker yuborishingiz mumkin — hammasi anonim qoladi ✅
+Assalomu alaykum! Bu bot orqali siz anonim ravishda Suhrobga (@suhrobswe) savol bera olasiz.
+Siz matn, rasm, ovoz, video yoki sticker yuborishingiz mumkin — sizning kimligingiz to'liqligicha anonim qoladi ✅
   `;
     ctx.reply(welcomeText, { parse_mode: "Markdown" });
 });
@@ -46,7 +46,7 @@ bot.on(["text", "photo", "video", "audio", "voice", "sticker"], async (ctx) => {
 
     // Foydalanuvchiga tasdiq
     await ctx.reply(
-        `✅ Savolingiz qabul qilindi.\n\nID: #${questionCounter}\n${questionContent}`
+        `✅ Savolingiz qabul qilindi. Suhrob tez orada savolingizga javob beradi.\n\nID: #${questionCounter}\n${questionContent}`
     );
 
     // Adminga yuborish
@@ -93,7 +93,7 @@ bot.command("answer", async (ctx) => {
     if (ctx.chat.id.toString() !== ADMIN_ID)
         return ctx.reply("❌ Siz admin emassiz");
 
-    const parts = ctx.message.text.split(" ");
+    const parts = ctx.message.text.trim().split(" ");
     const questionId = parts[1];
     const answer = parts.slice(2).join(" ");
 
@@ -117,7 +117,8 @@ bot.command("answer", async (ctx) => {
 
     questions[questionId].answered = true;
 
-    ctx.reply(`✅ #${questionId} savolga javob yuborildi.`);
+    // ✅ Admin uchun ham xabar
+    await ctx.reply(`✅ #${questionId} savolga javob yuborildi:\n\n${answer}`);
 });
 
 // Xatoliklarni tutish
