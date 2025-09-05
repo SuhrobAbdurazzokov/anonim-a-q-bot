@@ -57,7 +57,7 @@ function handleQuestion(chatId, type, content, fileId = null) {
         timestamp: new Date(),
     };
 
-    console.log(`📝 Yangi ${type} savol #${qId}`);
+    // console.log(`📝 Yangi ${type} savol #${qId}`);
 
     // Foydalanuvchiga tasdiq
     bot.sendMessage(
