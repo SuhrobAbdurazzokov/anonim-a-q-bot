@@ -41,7 +41,7 @@ Ismingiz va ma'lumotlaringiz *anonim saqlanadi*.
             parse_mode: "Markdown",
             reply_markup: {
                 keyboard: [
-                    ["👨‍💻 About Suhrob", "📲📞 Contacts"],
+                    ["👨‍💻 About Suhrob", "📲 Contacts"],
                     ["📝 Send Feedback"],
                 ],
                 resize_keyboard: true,
@@ -57,45 +57,49 @@ bot.on("message", (msg) => {
 
     if (chatId === ADMIN_ID) return;
 
+    // About Suhrob
     if (text === "👨‍💻 About Suhrob") {
         bot.sendMessage(
             chatId,
-            `👨‍💻 *About Suhrob*\n\nAssalomu alaykum! Men Suhrob Abdurazzoqov, Software Engineer (Backend, NodeJS). Maqsadlarim O'zbekistonda sifatli IT auditoriyani rivojlantirish va yoshlarni qo'llab-quvvatlash.\n\n Biz yutamiz bolalar!`,
+            `👨‍💻 *About Suhrob*\n\nAssalomu alaykum! Men Suhrob Abdurazzoqov, Software Engineer (Backend, NodeJS). Maqsadlarim O'zbekistonda sifatli IT auditoriyani rivojlantirish va yoshlarni qo'llab-quvvatlash.\n\nBiz yutamiz bolalar!`,
             { parse_mode: "Markdown" }
         );
         return;
     }
 
-    if (text === "📲📞 Contacts") {
+    // Contacts
+    if (text === "📲 Contacts") {
         bot.sendMessage(chatId, "📇 *Contacts:* ", {
             parse_mode: "Markdown",
             reply_markup: {
                 inline_keyboard: [
                     [
                         {
-                            text: "Telegram",
-                            url: "https://t.me/abdurazzokovswe",
+                            text: "👤 Telegram Profile",
+                            url: "https://t.me/suhrobswe",
                         },
                         {
-                            text: "Github",
-                            url: "https://github.com/SuhrobAbdurazzokov",
+                            text: "💬 Telegram Channel",
+                            url: "https://t.me/abdurazzokovswe",
                         },
                     ],
                     [
                         {
-                            text: "LinkedIn",
-                            url: "https://www.linkedin.com/in/suhrob-abdurazzokov-437059376",
+                            text: "💻 Github",
+                            url: "https://github.com/SuhrobAbdurazzokov",
                         },
                         {
-                            text: "Email: ssuhrobabdurazzoqov@gmail.com",
-                            callback_data: "email_info",
+                            text: "🔗 LinkedIn",
+                            url: "https://www.linkedin.com/in/suhrob-abdurazzokov-437059376",
                         },
                     ],
                 ],
             },
         });
+        return;
     }
 
+    // Send Feedback
     if (text === "📝 Send Feedback") {
         bot.sendMessage(
             chatId,
@@ -126,11 +130,13 @@ bot.on("message", (msg) => {
         return;
     }
 
+    // Agar matn oddiy savol bo'lsa
     if (text && !text.startsWith("/")) {
         handleQuestion(chatId, "text", text);
     }
 });
 
+// Savolni saqlash va adminga yuborish
 function handleQuestion(chatId, type, content, fileId = null) {
     const qId = questionCounter;
     questionCounter++;
@@ -151,7 +157,7 @@ function handleQuestion(chatId, type, content, fileId = null) {
     );
 
     if (ADMIN_ID) {
-        let notify = `🔔 *Yangi savol keldi!*\n\n`;
+        let notify = `🔔 *Yangi savol keldi (#${qId})!*\n\n`;
         notify +=
             type === "text" ? `📝 Savol: ${content}` : `📎 Fayl turi: ${type}`;
         notify += `\n\nJavob uchun: /a ${qId} [xabaringiz]`;
@@ -171,6 +177,7 @@ function handleQuestion(chatId, type, content, fileId = null) {
     }
 }
 
+// Javob berish
 bot.onText(/\/a (\d+) (.+)/, (msg, match) => {
     const chatId = String(msg.chat.id);
     if (chatId !== ADMIN_ID) return;
@@ -184,7 +191,7 @@ bot.onText(/\/a (\d+) (.+)/, (msg, match) => {
     const q = questions[questionId];
     bot.sendMessage(
         q.userId,
-        `💬 *Savolingizga javob keldi:*\n\n✅ Suhrobning sizga yozgan javobi: \n${answer}`,
+        `💬 *Savolingizga javob keldi:*\n\n✅ Suhrobning sizga yozgan javobi:\n${answer}`,
         { parse_mode: "Markdown" }
     );
 
@@ -192,6 +199,7 @@ bot.onText(/\/a (\d+) (.+)/, (msg, match) => {
     bot.sendMessage(chatId, `✅ Javob foydalanuvchiga yuborildi!`);
 });
 
+// Feedback javob
 bot.onText(/\/f (\d+) (.+)/, (msg, match) => {
     const chatId = String(msg.chat.id);
     if (chatId !== ADMIN_ID) return;
@@ -205,7 +213,7 @@ bot.onText(/\/f (\d+) (.+)/, (msg, match) => {
     const f = feedbacks[fId];
     bot.sendMessage(
         f.userId,
-        `💬 *Feedbackingizga javob keldi:*\n\n✅ Suhrobning feedbackingizga javobi: \n${answer}`,
+        `💬 *Feedbackingizga javob keldi:*\n\n✅ Suhrobning feedbackingizga javobi:\n${answer}`,
         { parse_mode: "Markdown" }
     );
 
@@ -213,6 +221,7 @@ bot.onText(/\/f (\d+) (.+)/, (msg, match) => {
     bot.sendMessage(chatId, `✅ Javob foydalanuvchiga yuborildi!`);
 });
 
+// Fayllar
 bot.on("photo", (msg) => {
     const chatId = String(msg.chat.id);
     if (chatId !== ADMIN_ID) {
