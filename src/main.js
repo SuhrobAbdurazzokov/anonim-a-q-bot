@@ -15,6 +15,9 @@ let questionCounter = 1;
 let feedbacks = {};
 let feedbackCounter = 1;
 
+// Foydalanuvchi holatlarini saqlash uchun
+let userStates = {};
+
 // Polling xatoliklari
 bot.on("polling_error", (error) => {
     console.error("❌ Polling xatosi:", error.code);
@@ -31,6 +34,10 @@ bot.on("polling_error", (error) => {
 // /start komandasi
 bot.onText(/\/start/, (msg) => {
     const chatId = msg.chat.id;
+
+    // Foydalanuvchi holatini reset qilish
+    userStates[chatId] = null;
+
     bot.sendMessage(
         chatId,
         `🤖 *Anonim Savol-Javob Bot*
@@ -60,6 +67,40 @@ bot.on("message", (msg) => {
 
     if (chatId === ADMIN_ID) return;
 
+    // Agar foydalanuvchi feedback kutayotgan holatda bo'lsa
+    if (userStates[chatId] === "waiting_feedback") {
+        if (!text) {
+            bot.sendMessage(
+                chatId,
+                "❌ Iltimos, faqat matn ko'rinishida feedback yuboring."
+            );
+            return;
+        }
+
+        const fId = feedbackCounter++;
+        feedbacks[fId] = {
+            userId: chatId,
+            content: text,
+            answered: false,
+            timestamp: new Date(),
+        };
+
+        bot.sendMessage(
+            chatId,
+            "✅ Fikringiz qabul qilindi. E'tiboringiz uchun rahmat!"
+        );
+
+        bot.sendMessage(
+            ADMIN_ID,
+            `💬 *Yangi Feedback keldi (#${fId}):*\n\n${text}\n\nJavob uchun: /f ${fId} [xabar]`,
+            { parse_mode: "Markdown" }
+        );
+
+        // Holatni reset qilish
+        userStates[chatId] = null;
+        return;
+    }
+
     // Feedback bo'lsa
     if (text === "📝 Send Feedback") {
         bot.sendMessage(
@@ -67,33 +108,14 @@ bot.on("message", (msg) => {
             "📝 Iltimos, o'z fikringizni yozing. Sizning fikringiz Suhrobga anonim tarzda yetkaziladi."
         );
 
-        bot.once("message", (msg) => {
-            if (!msg.text) return;
-            const userFeedback = msg.text;
-            const fId = feedbackCounter++;
-            feedbacks[fId] = {
-                userId: chatId,
-                content: userFeedback,
-                answered: false,
-                timestamp: new Date(),
-            };
-
-            bot.sendMessage(
-                chatId,
-                "✅ Fikringiz qabul qilindi. E'tiboringiz uchun rahmat!"
-            );
-
-            bot.sendMessage(
-                ADMIN_ID,
-                `💬 *Yangi Feedback keldi (#${fId}):*\n\n${userFeedback}\n\nJavob uchun: /f ${fId} [xabar]`,
-                { parse_mode: "Markdown" }
-            );
-        });
-        return; // <- Bu muhim! HandleQuestion chaqirilmasligi uchun
+        // Foydalanuvchi holatini o'rnatish
+        userStates[chatId] = "waiting_feedback";
+        return;
     }
 
     // About Suhrob
     if (text === "👨‍💻 About Suhrob") {
+        userStates[chatId] = null; // Holatni reset qilish
         bot.sendMessage(
             chatId,
             `👨‍💻 *About Suhrob*\n\nAssalomu alaykum! Men Suhrob Abdurazzoqov, Software Engineer (Backend, NodeJS). Maqsadlarim O'zbekistonda sifatli IT auditoriyani rivojlantirish va yoshlarni qo'llab-quvvatlash.\n\nBiz yutamiz bolalar!`,
@@ -104,6 +126,7 @@ bot.on("message", (msg) => {
 
     // Contacts
     if (text === "📲 Contacts") {
+        userStates[chatId] = null; // Holatni reset qilish
         bot.sendMessage(chatId, "📇 *Contacts:* ", {
             parse_mode: "Markdown",
             reply_markup: {
@@ -136,6 +159,7 @@ bot.on("message", (msg) => {
 
     // Oddiy savol bo'lsa
     if (text && !text.startsWith("/")) {
+        userStates[chatId] = null; // Holatni reset qilish
         handleQuestion(chatId, "text", text);
     }
 });
@@ -229,6 +253,13 @@ bot.onText(/\/f (\d+) (.+)/, (msg, match) => {
 bot.on("photo", (msg) => {
     const chatId = String(msg.chat.id);
     if (chatId !== ADMIN_ID) {
+        // Agar feedback kutayotgan holatda bo'lsa, rasm qabul qilmaymiz
+        if (userStates[chatId] === "waiting_feedback") {
+            bot.sendMessage(chatId, "❌ Feedback uchun faqat matn yuboring.");
+            return;
+        }
+
+        userStates[chatId] = null; // Holatni reset qilish
         const fileId = msg.photo[msg.photo.length - 1].file_id;
         handleQuestion(chatId, "photo", null, fileId);
     }
@@ -237,6 +268,13 @@ bot.on("photo", (msg) => {
 bot.on("video", (msg) => {
     const chatId = String(msg.chat.id);
     if (chatId !== ADMIN_ID) {
+        // Agar feedback kutayotgan holatda bo'lsa, video qabul qilmaymiz
+        if (userStates[chatId] === "waiting_feedback") {
+            bot.sendMessage(chatId, "❌ Feedback uchun faqat matn yuboring.");
+            return;
+        }
+
+        userStates[chatId] = null; // Holatni reset qilish
         handleQuestion(chatId, "video", null, msg.video.file_id);
     }
 });
@@ -244,6 +282,13 @@ bot.on("video", (msg) => {
 bot.on("voice", (msg) => {
     const chatId = String(msg.chat.id);
     if (chatId !== ADMIN_ID) {
+        // Agar feedback kutayotgan holatda bo'lsa, ovoz qabul qilmaymiz
+        if (userStates[chatId] === "waiting_feedback") {
+            bot.sendMessage(chatId, "❌ Feedback uchun faqat matn yuboring.");
+            return;
+        }
+
+        userStates[chatId] = null; // Holatni reset qilish
         handleQuestion(chatId, "voice", null, msg.voice.file_id);
     }
 });
@@ -251,6 +296,13 @@ bot.on("voice", (msg) => {
 bot.on("document", (msg) => {
     const chatId = String(msg.chat.id);
     if (chatId !== ADMIN_ID) {
+        // Agar feedback kutayotgan holatda bo'lsa, fayl qabul qilmaymiz
+        if (userStates[chatId] === "waiting_feedback") {
+            bot.sendMessage(chatId, "❌ Feedback uchun faqat matn yuboring.");
+            return;
+        }
+
+        userStates[chatId] = null; // Holatni reset qilish
         handleQuestion(chatId, "document", null, msg.document.file_id);
     }
 });
