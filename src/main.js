@@ -15,6 +15,7 @@ let questionCounter = 1;
 let feedbacks = {};
 let feedbackCounter = 1;
 
+// Polling xatoliklari
 bot.on("polling_error", (error) => {
     console.error("❌ Polling xatosi:", error.code);
     if (
@@ -27,6 +28,7 @@ bot.on("polling_error", (error) => {
     }
 });
 
+// /start komandasi
 bot.onText(/\/start/, (msg) => {
     const chatId = msg.chat.id;
     bot.sendMessage(
@@ -51,11 +53,44 @@ Ismingiz va ma'lumotlaringiz *anonim saqlanadi*.
     );
 });
 
+// Foydalanuvchi xabarlarini qabul qilish
 bot.on("message", (msg) => {
     const chatId = String(msg.chat.id);
     const text = msg.text;
 
     if (chatId === ADMIN_ID) return;
+
+    // Feedback bo'lsa
+    if (text === "📝 Send Feedback") {
+        bot.sendMessage(
+            chatId,
+            "📝 Iltimos, o'z fikringizni yozing. Sizning fikringiz Suhrobga anonim tarzda yetkaziladi."
+        );
+
+        bot.once("message", (msg) => {
+            if (!msg.text) return;
+            const userFeedback = msg.text;
+            const fId = feedbackCounter++;
+            feedbacks[fId] = {
+                userId: chatId,
+                content: userFeedback,
+                answered: false,
+                timestamp: new Date(),
+            };
+
+            bot.sendMessage(
+                chatId,
+                "✅ Fikringiz qabul qilindi. E'tiboringiz uchun rahmat!"
+            );
+
+            bot.sendMessage(
+                ADMIN_ID,
+                `💬 *Yangi Feedback keldi (#${fId}):*\n\n${userFeedback}\n\nJavob uchun: /f ${fId} [xabar]`,
+                { parse_mode: "Markdown" }
+            );
+        });
+        return; // <- Bu muhim! HandleQuestion chaqirilmasligi uchun
+    }
 
     // About Suhrob
     if (text === "👨‍💻 About Suhrob") {
@@ -99,44 +134,13 @@ bot.on("message", (msg) => {
         return;
     }
 
-    // Send Feedback
-    if (text === "📝 Send Feedback") {
-        bot.sendMessage(
-            chatId,
-            "📝 Iltimos, o'z fikringizni yozing. Sizning fikringiz Suhrobga anonim tarzda yetkaziladi."
-        );
-
-        bot.once("message", (msg) => {
-            if (!msg.text) return;
-            const userFeedback = msg.text;
-            const fId = feedbackCounter++;
-            feedbacks[fId] = {
-                userId: chatId,
-                content: userFeedback,
-                answered: false,
-                timestamp: new Date(),
-            };
-
-            bot.sendMessage(
-                chatId,
-                "✅ Fikringiz qabul qilindi. E'tiboringiz uchun rahmat!"
-            );
-            bot.sendMessage(
-                ADMIN_ID,
-                `💬 *Yangi Feedback keldi (#${fId}):*\n\n${userFeedback}\n\nJavob uchun: /f ${fId} [xabar]`,
-                { parse_mode: "Markdown" }
-            );
-        });
-        return;
-    }
-
-    // Agar matn oddiy savol bo'lsa
+    // Oddiy savol bo'lsa
     if (text && !text.startsWith("/")) {
         handleQuestion(chatId, "text", text);
     }
 });
 
-// Savolni saqlash va adminga yuborish
+// Savolni saqlash va admin ga yuborish
 function handleQuestion(chatId, type, content, fileId = null) {
     const qId = questionCounter;
     questionCounter++;
@@ -177,7 +181,7 @@ function handleQuestion(chatId, type, content, fileId = null) {
     }
 }
 
-// Javob berish
+// Admin javob berish
 bot.onText(/\/a (\d+) (.+)/, (msg, match) => {
     const chatId = String(msg.chat.id);
     if (chatId !== ADMIN_ID) return;
@@ -199,7 +203,7 @@ bot.onText(/\/a (\d+) (.+)/, (msg, match) => {
     bot.sendMessage(chatId, `✅ Javob foydalanuvchiga yuborildi!`);
 });
 
-// Feedback javob
+// Admin feedback javob berish
 bot.onText(/\/f (\d+) (.+)/, (msg, match) => {
     const chatId = String(msg.chat.id);
     if (chatId !== ADMIN_ID) return;
@@ -221,7 +225,7 @@ bot.onText(/\/f (\d+) (.+)/, (msg, match) => {
     bot.sendMessage(chatId, `✅ Javob foydalanuvchiga yuborildi!`);
 });
 
-// Fayllar
+// Fayllar (photo, video, voice, document)
 bot.on("photo", (msg) => {
     const chatId = String(msg.chat.id);
     if (chatId !== ADMIN_ID) {
@@ -251,4 +255,5 @@ bot.on("document", (msg) => {
     }
 });
 
+// Bot ishga tushdi
 bot.getMe().then(() => console.log(`✅ Bot running...`));
