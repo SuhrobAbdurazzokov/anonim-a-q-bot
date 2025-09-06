@@ -150,4 +150,4 @@ bot.onText(/\/a (\d+) (.+)/, (msg, match) => {
     );
 });
 
-=bot.getMe().then((me) => console.log(`✅ Bot @${me.username} ishga tushdi...`));
+bot.getMe().then((me) => console.log(`✅ Bot @${me.username} ishga tushdi...`));
