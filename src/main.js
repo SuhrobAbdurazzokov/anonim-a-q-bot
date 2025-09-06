@@ -67,7 +67,7 @@ bot.on("callback_query", (callbackQuery) => {
     if (data === "about_suhrob") {
         bot.sendMessage(
             chatId,
-            `👨‍💻 *About Suhrob*\n\nAssalomu alaykum! Men Suhrob Abdurazzoqov, Software Engineer (Backend, NodeJS) pozitsiyasida ishlayman. Maqsadlarim O'zbekistonda sifatli IT auditoriyani rivojlantirish va yoshlarni qo'llab-quvvatlash.\n\n Biz yutamiz bolalar!`,
+            `👨‍💻 *About Suhrob*\n\nAssalomu alaykum! Men Suhrob Abdurazzoqov, Software Engineer (Backend, NodeJS). Maqsadlarim O'zbekistonda sifatli IT auditoriyani rivojlantirish va yoshlarni qo'llab-quvvatlash.\n\n Biz yutamiz bolalar!`,
             { parse_mode: "Markdown" }
         );
     }
@@ -231,7 +231,7 @@ bot.onText(/\/f (\d+) (.+)/, (msg, match) => {
     const f = feedbacks[fId];
     bot.sendMessage(
         f.userId,
-        `💬 *Feedbackingizga javob keldi:*\n\n✅ Suhrobning feedbackingizga javobi: ${answer}`,
+        `💬 *Feedbackingizga javob keldi:*\n\n✅ Suhrobning feedbackingizga javobi: \n${answer}`,
         { parse_mode: "Markdown" }
     );
 
