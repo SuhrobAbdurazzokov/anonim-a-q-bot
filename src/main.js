@@ -57,8 +57,6 @@ function handleQuestion(chatId, type, content, fileId = null) {
         timestamp: new Date(),
     };
 
-    // console.log(`📝 Yangi ${type} savol #${qId}`);
-
     // Foydalanuvchiga tasdiq
     bot.sendMessage(
         chatId,
@@ -70,7 +68,7 @@ function handleQuestion(chatId, type, content, fileId = null) {
         let notify = `🔔 *Yangi ${type} savol keldi!*\n\n`;
         notify +=
             type === "text" ? `📝 Savol: ${content}` : `📎 Fayl turi: ${type}`;
-        notify += `\n\nJavob berish uchun: /answer ${qId} [javob]`;
+        notify += `\n\nJavob berish uchun: /a ${qId} [javob]`; // ✅ qisqa komandaga o‘zgartirildi
 
         bot.sendMessage(ADMIN_ID, notify, { parse_mode: "Markdown" });
 
@@ -129,7 +127,8 @@ bot.on("document", (msg) => {
 });
 
 // --- Savolga javob berish (faqat admin) ---
-bot.onText(/\/answer (\d+) (.+)/, (msg, match) => {
+bot.onText(/\/a (\d+) (.+)/, (msg, match) => {
+    // ✅ endi /a ishlaydi
     const chatId = String(msg.chat.id);
     if (chatId !== ADMIN_ID) return;
 
@@ -141,7 +140,6 @@ bot.onText(/\/answer (\d+) (.+)/, (msg, match) => {
     }
 
     const q = questions[questionId];
-    const questionText = q.content || "[media]";
 
     // Foydalanuvchiga yuborish
     bot.sendMessage(
