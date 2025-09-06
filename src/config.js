@@ -1,8 +1,10 @@
-import { config } from "dotenv";
+import dotenv from "dotenv";
 
-config();
+dotenv.config();
 
-export default {
-	TOKEN: process.env.token,
-	ADMIN_ID: process.env.admin_id
-}
+const config = {
+    TOKEN: process.env.TOKEN,
+    ADMIN_ID: process.env.ADMIN_ID,
+};
+
+export default config;
