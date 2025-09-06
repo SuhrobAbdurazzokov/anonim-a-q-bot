@@ -1,8 +1,7 @@
 import TelegramBot from "node-telegram-bot-api";
 import config from "./config.js";
 
-const token = config.TOKEN;
-const bot = new TelegramBot(token, {
+const bot = new TelegramBot(config.TOKEN, {
     polling: {
         interval: 300,
         autoStart: true,
@@ -10,11 +9,10 @@ const bot = new TelegramBot(token, {
     },
 });
 
-const ADMIN_ID = String(config.ADMIN_ID); // string qilib oldik
+const ADMIN_ID = String(config.ADMIN_ID);
 let questions = {};
 let questionCounter = 1;
 
-// --- Polling xatolarni ushlash ---
 bot.on("polling_error", (error) => {
     console.error("❌ Polling xatosi:", error.code);
     if (
@@ -39,12 +37,12 @@ Siz matn, rasm, audio yoki video ko‘rinishida savol bera olasiz.
 Ismingiz va ma’lumotlaringiz *anonim saqlanadi*.  
 
 📝 Savolingizni yuboring, Suhrob tez orada javob beradi.
-        `,
+    `,
         { parse_mode: "Markdown" }
     );
 });
 
-// --- Savolni qabul qilish umumiy funksiya ---
+// --- Savolni qabul qilish ---
 function handleQuestion(chatId, type, content, fileId = null) {
     const qId = questionCounter++;
 
@@ -57,22 +55,19 @@ function handleQuestion(chatId, type, content, fileId = null) {
         timestamp: new Date(),
     };
 
-    // Foydalanuvchiga tasdiq
     bot.sendMessage(
         chatId,
         `✅ Savolingiz qabul qilindi. Suhrob tez orada javob beradi.`
     );
 
-    // Adminga yuborish
     if (ADMIN_ID) {
         let notify = `🔔 *Yangi ${type} savol keldi!*\n\n`;
         notify +=
             type === "text" ? `📝 Savol: ${content}` : `📎 Fayl turi: ${type}`;
-        notify += `\n\nJavob berish uchun: /a ${qId} [javob]`; // ✅ qisqa komandaga o‘zgartirildi
+        notify += `\n\nJavob berish uchun: /a ${qId} [javob]`;
 
         bot.sendMessage(ADMIN_ID, notify, { parse_mode: "Markdown" });
 
-        // Media fayllar admin uchun
         if (type === "photo")
             bot.sendPhoto(ADMIN_ID, fileId, { caption: `📷 Rasm (#${qId})` });
         if (type === "video")
@@ -89,7 +84,7 @@ function handleQuestion(chatId, type, content, fileId = null) {
 // --- Text savollar ---
 bot.on("message", (msg) => {
     const chatId = String(msg.chat.id);
-    if (chatId === ADMIN_ID) return; // Adminning oddiy xabarlari saqlanmaydi
+    if (chatId === ADMIN_ID) return;
 
     if (msg.text && !msg.text.startsWith("/")) {
         handleQuestion(chatId, "text", msg.text);
@@ -126,9 +121,8 @@ bot.on("document", (msg) => {
     }
 });
 
-// --- Savolga javob berish (faqat admin) ---
+// --- Admin javob beradi ---
 bot.onText(/\/a (\d+) (.+)/, (msg, match) => {
-    // ✅ endi /a ishlaydi
     const chatId = String(msg.chat.id);
     if (chatId !== ADMIN_ID) return;
 
@@ -140,15 +134,14 @@ bot.onText(/\/a (\d+) (.+)/, (msg, match) => {
     }
 
     const q = questions[questionId];
-
-    // Foydalanuvchiga yuborish
     bot.sendMessage(
         q.userId,
         `💬 *Savolingizga javob keldi:*\n\n✅ Javob: ${answer}`,
-        { parse_mode: "Markdown" }
+        {
+            parse_mode: "Markdown",
+        }
     );
 
-    // Admin tasdiq
     questions[questionId].answered = true;
     bot.sendMessage(
         chatId,
