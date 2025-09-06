@@ -41,7 +41,7 @@ Ismingiz va ma'lumotlaringiz *anonim saqlanadi*.
             parse_mode: "Markdown",
             reply_markup: {
                 keyboard: [
-                    ["👨‍💻 About Suhrob", "📇 Contacts"],
+                    ["👨‍💻 About Suhrob", "📲📞 Contacts"],
                     ["📝 Send Feedback"],
                 ],
                 resize_keyboard: true,
@@ -66,7 +66,7 @@ bot.on("message", (msg) => {
         return;
     }
 
-    if (text === "📇 Contacts") {
+    if (text === "📲📞 Contacts") {
         bot.sendMessage(chatId, "📇 *Contacts:* ", {
             parse_mode: "Markdown",
             reply_markup: {
@@ -87,14 +87,13 @@ bot.on("message", (msg) => {
                             url: "https://www.linkedin.com/in/suhrob-abdurazzokov-437059376",
                         },
                         {
-                            text: "Email",
-                            url: "mailto:ssuhrobabdurazzoqov@gmail.com",
+                            text: "Email: ssuhrobabdurazzoqov@gmail.com",
+                            callback_data: "email_info",
                         },
                     ],
                 ],
             },
         });
-        return;
     }
 
     if (text === "📝 Send Feedback") {
