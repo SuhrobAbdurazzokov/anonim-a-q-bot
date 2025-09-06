@@ -12,6 +12,8 @@ const bot = new TelegramBot(config.TOKEN, {
 const ADMIN_ID = String(config.ADMIN_ID);
 let questions = {};
 let questionCounter = 1;
+let feedbacks = {};
+let feedbackCounter = 1;
 
 bot.on("polling_error", (error) => {
     console.error("❌ Polling xatosi:", error.code);
@@ -25,26 +27,100 @@ bot.on("polling_error", (error) => {
     }
 });
 
-// --- /start komandasi ---
 bot.onText(/\/start/, (msg) => {
     const chatId = msg.chat.id;
     bot.sendMessage(
         chatId,
-        `
-🤖 *Anonim Savol-Javob Bot*
+        `🤖 *Anonim Savol-Javob Bot*
 
-Siz matn, rasm, audio yoki video ko‘rinishida savol bera olasiz.
-Ismingiz va ma’lumotlaringiz *anonim saqlanadi*.  
+Siz matn, rasm, audio yoki video ko'rinishida savol bera olasiz.
+Ismingiz va ma'lumotlaringiz *anonim saqlanadi*.
 
-📝 Savolingizni yuboring, Suhrob tez orada javob beradi.
-    `,
-        { parse_mode: "Markdown" }
+📝 Savolingizni yuboring, Suhrob tez orada javob beradi.`,
+        {
+            parse_mode: "Markdown",
+            reply_markup: {
+                inline_keyboard: [
+                    [
+                        {
+                            text: "👨‍💻 About Suhrob",
+                            callback_data: "about_suhrob",
+                        },
+                        { text: "📇 Contacts", callback_data: "contacts" },
+                    ],
+                    [
+                        {
+                            text: "📝 Send Feedback",
+                            callback_data: "send_feedback",
+                        },
+                    ],
+                ],
+            },
+        }
     );
 });
 
-// --- Savolni qabul qilish ---
+bot.on("callback_query", (callbackQuery) => {
+    const chatId = callbackQuery.message.chat.id;
+    const data = callbackQuery.data;
+
+    if (data === "about_suhrob") {
+        bot.sendMessage(
+            chatId,
+            `👨‍💻 *About Suhrob*\n\nAssalomu alaykum! Men Suhrob Abdurazzoqov, Software Engineer (Backend, NodeJS) pozitsiyasida ishlayman. Maqsadlarim O'zbekistonda sifatli IT auditoriyani rivojlantirish va yoshlarni qo'llab-quvvatlash.\n\n Biz yutamiz bolalar!`,
+            { parse_mode: "Markdown" }
+        );
+    }
+
+    if (data === "contacts") {
+        bot.sendMessage(
+            chatId,
+            `📇 *Contacts:*\n\n` +
+                `- Telegram: @abdurazzokovswe\n` +
+                `- Github: SuhrobAbdurazzokov\n` +
+                `- LinkedIn: linkedin.com/in/suhrob-abdurazzokov-437059376\n` +
+                `- Email: ssuhrobabdurazzoqov@gmail.com`,
+            { parse_mode: "Markdown" }
+        );
+    }
+
+    if (data === "send_feedback") {
+        bot.sendMessage(
+            chatId,
+            "📝 Iltimos, o'z fikringizni yozing. Sizning fikringiz Suhrobga anonim tarzda yetkaziladi."
+        );
+
+        bot.once("message", (msg) => {
+            if (!msg.text) return;
+            const userFeedback = msg.text;
+            const fId = feedbackCounter++;
+            feedbacks[fId] = {
+                userId: chatId,
+                content: userFeedback,
+                answered: false,
+                timestamp: new Date(),
+            };
+
+            bot.sendMessage(
+                chatId,
+                "✅ Fikringiz qabul qilindi. E'tiboringiz uchun rahmat!"
+            );
+            bot.sendMessage(
+                ADMIN_ID,
+                `💬 *Yangi Feedback keldi (#${fId}):*\n\n${userFeedback}\n\nJavob uchun: /f ${fId} [xabar]`,
+                { parse_mode: "Markdown" }
+            );
+        });
+    }
+
+    bot.answerCallbackQuery(callbackQuery.id);
+});
+
 function handleQuestion(chatId, type, content, fileId = null) {
-    const qId = questionCounter++;
+    const qId = questionCounter;
+
+    questionCounter++;
+    if (questionCounter > 15) questionCounter = 1;
 
     questions[qId] = {
         userId: chatId,
@@ -61,10 +137,10 @@ function handleQuestion(chatId, type, content, fileId = null) {
     );
 
     if (ADMIN_ID) {
-        let notify = `🔔 *Yangi ${type} savol keldi!*\n\n`;
+        let notify = `🔔 *Yangi savol keldi (#${qId})!*\n\n`;
         notify +=
             type === "text" ? `📝 Savol: ${content}` : `📎 Fayl turi: ${type}`;
-        notify += `\n\nJavob berish uchun: /a ${qId} [javob]`;
+        notify += `\n\nJavob uchun: /a ${qId} [xabaringiz]`;
 
         bot.sendMessage(ADMIN_ID, notify, { parse_mode: "Markdown" });
 
@@ -81,7 +157,6 @@ function handleQuestion(chatId, type, content, fileId = null) {
     }
 }
 
-// --- Text savollar ---
 bot.on("message", (msg) => {
     const chatId = String(msg.chat.id);
     if (chatId === ADMIN_ID) return;
@@ -91,7 +166,6 @@ bot.on("message", (msg) => {
     }
 });
 
-// --- Media savollar ---
 bot.on("photo", (msg) => {
     const chatId = String(msg.chat.id);
     if (chatId !== ADMIN_ID) {
@@ -121,7 +195,6 @@ bot.on("document", (msg) => {
     }
 });
 
-// --- Admin javob beradi ---
 bot.onText(/\/a (\d+) (.+)/, (msg, match) => {
     const chatId = String(msg.chat.id);
     if (chatId !== ADMIN_ID) return;
@@ -130,24 +203,40 @@ bot.onText(/\/a (\d+) (.+)/, (msg, match) => {
     const answer = match[2];
 
     if (!questions[questionId]) {
-        return bot.sendMessage(chatId, "❌ Bunday savol yo‘q!");
+        return bot.sendMessage(chatId, "❌ Bunday savol yo'q!");
     }
 
     const q = questions[questionId];
     bot.sendMessage(
         q.userId,
-        `💬 *Savolingizga javob keldi:*\n\n✅ Javob: ${answer}`,
-        {
-            parse_mode: "Markdown",
-        }
+        `💬 *Savolingizga javob keldi:*\n\n✅ Suhrobning sizga yozgan javobi: ${answer}`,
+        { parse_mode: "Markdown" }
     );
 
     questions[questionId].answered = true;
-    bot.sendMessage(
-        chatId,
-        `✅ #${questionId} ga javob foydalanuvchiga yuborildi!`
-    );
+    bot.sendMessage(chatId, `✅ Javob foydalanuvchiga yuborildi!`);
 });
 
-// --- Bot ishga tushganda ---
-bot.getMe().then((me) => console.log(`✅ Bot @${me.username} ishga tushdi...`));
+bot.onText(/\/f (\d+) (.+)/, (msg, match) => {
+    const chatId = String(msg.chat.id);
+    if (chatId !== ADMIN_ID) return;
+
+    const fId = match[1];
+    const answer = match[2];
+
+    if (!feedbacks[fId]) {
+        return bot.sendMessage(chatId, "❌ Bunday feedback yo'q!");
+    }
+
+    const f = feedbacks[fId];
+    bot.sendMessage(
+        f.userId,
+        `💬 *Feedbackingizga javob keldi:*\n\n✅ Suhrobning feedbackingizga javobi: ${answer}`,
+        { parse_mode: "Markdown" }
+    );
+
+    feedbacks[fId].answered = true;
+    bot.sendMessage(chatId, `✅ Javob foydalanuvchiga yuborildi!`);
+});
+
+bot.getMe().then(() => console.log(`✅ Bot running...`));
